@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
@@ -32,7 +33,6 @@ void Transform()
 Real Find_Integrand(const Real& w, const Real& fraction, const Real& r, const Real& psi, const Real& psi_other)
 {
 	return (w + 0.5*(1-alpha)*K*(r*r*r + 1/r)*r2*sin(psi2 - psi1));
-)
 }
 
 void One_Step(Real dt)
@@ -62,7 +62,7 @@ void One_Step(Real dt)
 	Transform();
 }
 
-void Eq(const Real& duration, const Real& dt, const Real& interval)
+void Eq(const Real& duration, const Real& dt, const Real& interval, bool time_info_flag = false)
 {
 	int savestep, steps;
 	steps = (int) round(duration / dt);
@@ -74,8 +74,12 @@ void Eq(const Real& duration, const Real& dt, const Real& interval)
 	{
 		if (i % savestep == 0)
 			output << i*dt << "\t" << r1 << "\t" << r2 << "\t" << psi1 << "\t" << psi2 << endl;
+		if (i % 100000 == 0 && time_info_flag)
+			cout << "\r" << "Step is at: " << i << flush;
 		One_Step(dt);
 	}
+	if (time_info_flag)
+		cout << "\tDone" << endl;
 }
 
 void Ave(const  int& steps, const Real dt, Real& mr1, Real& mr2)
@@ -96,18 +100,21 @@ void Ave(const  int& steps, const Real dt, Real& mr1, Real& mr2)
 	mr2 /= counter;
 }
 
-void Run(const Real& duration, const Real& dt, const Real& interval = 0)
+void Set_Output()
+{
+	output.close();
+	stringstream address;
+	address.str("");
+	address << "alpha_" << alpha << "_w1_" << std::setprecision(10) << w1 << "_w2_" << w2 << "_D1_" << D1 << "_D2_" << D2 << "_K_" << K << ".dat";
+	output.open(address.str().c_str());
+	cout << address.str() << endl;
+}
+
+void Single_Run(int argc, char* argv[])
 {
 
 //	psi1 = 2*M_PI*rand() / RAND_MAX;
 //	psi2 = 2*M_PI*rand() / RAND_MAX;
-	r1 = r2 = 0.9;
-	
-	Eq(duration, dt, interval);
-}
-
-int main(int argc, char* argv[])
-{
 	alpha  = atof(argv[1]);
 	w1= atof(argv[2]);
 	w2 = atof(argv[3]);
@@ -115,16 +122,137 @@ int main(int argc, char* argv[])
 	D2 = atof(argv[5]);
 	K = atof(argv[6]);
 	Real sim_t = atof(argv[7]);
-//	srand(time(NULL));	
-	stringstream address;
-	address.str("");
-	address << "alpha_" << alpha << "_w1_" << w1 << "_w2_" << w2 << "_D1_" << D1 << "_D2_" << D2 << "_K_" << K << ".dat";
-	output.open(address.str().c_str());
 
-	Run(sim_t, 0.001, 0.01);
+
+
+	r1 = r2 = 0.9;
+
+	Eq(sim_t, 0.001, 0.001,true);
+}
+
+void Omega_Chnage(int argc, char* argv[])
+{
+	alpha  = atof(argv[1]);
+	Real omega = atof(argv[2]);
+	Real omega_end = atof(argv[3]);
+	Real dw = atof(argv[4]);
+	Real D = atof(argv[5]);
+
+	Real eq_t = atof(argv[6]);
+	Real sim_t = atof(argv[7]);
+
+	K = 1;
+	w1 = omega;
+	w2 = 0;
+	D1 = D2 = D;
+
+	r1 = r2 = 0.9;
+
+	Real dt = 0.001;
+	Eq(eq_t, dt, 0.1);
+
+	if (omega_end > omega)
+		while (omega <= omega_end)
+		{
+			w1 = omega;
+			w2 = 0;
+
+			Set_Output();
+			Eq(sim_t, dt, 0.1);
+			omega += dw;
+		}
+	else
+		while (omega >= omega_end)
+		{
+			w1 = omega;
+			w2 = 0;
+
+			Set_Output();
+			Eq(sim_t, dt, 0.1);
+			omega -= dw;
+		}
+}
+
+Real tmax = 100000;
+Real r2c = 0.7;
+
+Real Go_Till_Spike(const Real& dt)
+{
+	Real t = 0;
+	while (r2 > r2c && t < (tmax+1))
+	{
+		One_Step(dt);
+		t += dt;
+	}
+	while (r2 < r2c)
+	{
+		One_Step(dt);
+		t += dt;
+	}
+	return t;
+}
+
+Real Spike_Interval(const Real& omega, const Real& D, const Real& eq_t)
+{
+	w1 = omega;
+	D1 = D2 = D;
+	r1 = r2 = 0.99;
+
+	Real dt = 0.01;
+	Eq(eq_t, dt, 1000);
+
+	Real t = Go_Till_Spike(dt);
+	if (t > tmax)
+		t = Go_Till_Spike(dt);
+	if (t < tmax)
+		t = Go_Till_Spike(dt);
+	return (t);
+}
+
+Real Spike_Interval(int argc, char* argv[])
+{
+	alpha  = atof(argv[1]);
+	Real D = atof(argv[2]);
+	Real eq_t = atof(argv[3]);
+	Real omega = atof(argv[4]);
+	Real factor = atof(argv[5]);
+	tmax = atof(argv[6]);
+	Real omega_c, domega;
+
+	K = 1;
+	w2 = 0;
+
+	Real t = tmax+1;
+
+	while (t > tmax)
+	{
+		cout << "#" << setprecision(20) << omega << endl;
+		omega_c = omega;
+		omega *= factor;
+		t = Spike_Interval(omega, D, eq_t);
+	}
+	domega = omega - omega_c;
+
+	cout << setprecision(10) << domega << "\t" << t << endl;
+
+	factor = 1.5;
+	while (t < tmax && t > 10)
+	{
+		domega *= factor;
+		omega = omega_c + domega;
+		t = Spike_Interval(omega, D, eq_t);
+		if (t < tmax)
+			cout << setprecision(20) << omega - omega_c << "\t" << t << endl;
+	}
+}
+
+int main(int argc, char* argv[])
+{
+	srand(time(NULL));
+
+//	Single_Run(argc, argv);
+	Omega_Chnage(argc,argv);
+//	Real t = Spike_Interval(argc, argv);
 
 //	Trace_k(100000,100000, dt);
 }
-
-
-

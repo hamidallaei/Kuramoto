@@ -14,13 +14,17 @@ struct Simulator{
 
 	stringstream info;
 	ofstream output;
+//	ofstream speed_output;
 
 	Simulator(int N1, int N2, Real omega1, Real omega2, Real D1, Real D2, Real K);
 	~Simulator();
-	
+
+	void Set_Output();
 	void One_Step(const Real& dt);
 	void One_Step_OMP(const Real& dt);
 	void Run(Real duration, const Real& dt, const Real& save_interval);
+
+	void Set_Omega(const Real& omega1, const Real& omega2);
 
 	void Write();
 };
@@ -34,11 +38,8 @@ Simulator::Simulator(int N1, int N2, Real omega1, Real omega2, Real D1, Real D2,
 	k1_c1.alpha = c1.alpha;
 	k1_c2.alpha = c2.alpha;
 
-	info.str("");
-	info << "N_" << N1+N2 << "_alpha_" << c2.alpha << "_w1_" << omega1 << "_w2_" << omega2 << "_D1_" << D1 << "_D2_" << D2 << "_K_" << K << ".dat";
+	Set_Output();
 
-	output.open(info.str().c_str());
-	cout << info.str() << endl;
 	c1.Find_Order_Parameter();
 	c2.Find_Order_Parameter();
 }
@@ -208,13 +209,37 @@ void Simulator::Run(Real duration, const Real& dt, const Real& save_interval = 0
 	{
 		if ((i % save_steps == 0) && (save_steps != 0))
 		{
-			if (i % (1000*save_steps) == 0)
-				cout << "time is: " << t << endl;
+			if (i % (100*save_steps) == 0)
+				cout << "\r" << "time is: " << t << flush;
 			Write();
 		}
 		One_Step_OMP(dt);
-//		One_Step(dt);
-		}
+	}
+	cout << endl;
+}
+
+void Simulator::Set_Omega(const Real& omega1, const Real& omega2)
+{
+	t = 0;
+	c1.Set_Omega(omega1);
+	c2.Set_Omega(omega2);
+	k1_c1.Set_Omega(omega1);
+	k1_c2.Set_Omega(omega2);
+	Set_Output();
+}
+
+void Simulator::Set_Output()
+{
+	output.close();
+	info.str("");
+	info << "N_" << c1.N+c2.N << "_alpha_" << c2.alpha << "_w1_" << c1.os[0].omega << "_w2_" << c2.os[0].omega << "_D1_" << c1.os[0].D << "_D2_" << c2.os[0].D << "_K_" << Oscillator::K << ".dat";
+	output.open(info.str().c_str());
+	cout << info.str() << endl;
+
+//	speed_output.close();
+// 	info.str("");
+// 	info << "speed_N_" << c1.N+c2.N << "_alpha_" << c2.alpha << "_w1_" << c1.os[0].omega << "_w2_" << c2.os[0].omega << "_D1_" << c1.os[0].D << "_D2_" << c2.os[0].D << "_K_" << Oscillator::K << ".dat";
+// 	speed_output.open(info.str().c_str());
 }
 
 void Simulator::Write()

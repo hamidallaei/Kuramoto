@@ -30,6 +30,8 @@ struct Cluster{
 
 	void Copy_Interaction(Cluster& c);
 
+	void Write_Interactions(ostream& out);
+
 	const Cluster& operator= (const Cluster& c);
 	const Cluster& operator+= (const Cluster& c);
 };
@@ -131,6 +133,12 @@ void Cluster::Find_Order_Parameter()
 	S /= N;
 	r = sqrt(C*C + S*S);
 	psi = atan2(S,C);
+}
+
+void Cluster::Write_Interactions(ostream& out)
+{
+	for (int i = 0; i < N; i++)
+		out << os[i].int_sum / 2 << endl;
 }
 
 const Cluster& Cluster::operator= (const Cluster& c)
