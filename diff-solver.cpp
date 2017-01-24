@@ -14,8 +14,9 @@ Real alpha = 0.75;
 Real K;
 Real D1 = 0.01;
 Real D2 = 0.01;
-Real w1 = 1;
-Real w2 = 5;
+Real dw = 0.2;
+Real w1 = -dw/2;
+Real w2 = dw/2;
 Real dt = 0.001;
 Real r1,r2, r1_new, r2_new;
 Real psi1,psi2, psi1_new, psi2_new;
@@ -105,7 +106,7 @@ void Set_Output()
 	output.close();
 	stringstream address;
 	address.str("");
-	address << "alpha_" << alpha << "_w1_" << std::setprecision(10) << w1 << "_w2_" << w2 << "_D1_" << D1 << "_D2_" << D2 << "_K_" << K << ".dat";
+	address << "alpha_" << alpha << "_dw_" << std::setprecision(10) << dw << "_D1_" << D1 << "_D2_" << D2 << ".dat";
 	output.open(address.str().c_str());
 	cout << address.str() << endl;
 }
@@ -116,34 +117,36 @@ void Single_Run(int argc, char* argv[])
 //	psi1 = 2*M_PI*rand() / RAND_MAX;
 //	psi2 = 2*M_PI*rand() / RAND_MAX;
 	alpha  = atof(argv[1]);
-	w1= atof(argv[2]);
-	w2 = atof(argv[3]);
-	D1 = atof(argv[4]);
-	D2 = atof(argv[5]);
-	K = atof(argv[6]);
-	Real sim_t = atof(argv[7]);
+	dw = atof(argv[2]);
+	D1 = atof(argv[3]);
+	D2 = atof(argv[4]);
+	K = 1;
+	Real sim_t = atof(argv[5]);
 
+	w1 = -dw/2;
+	w2 = dw/2;
 
+	r1 = r2 = 0.1;
 
-	r1 = r2 = 0.9;
+	Set_Output();
 
-	Eq(sim_t, 0.001, 0.001,true);
+	Eq(sim_t, 0.001, 0.01,true);
 }
 
 void Omega_Chnage(int argc, char* argv[])
 {
 	alpha  = atof(argv[1]);
-	Real omega = atof(argv[2]);
-	Real omega_end = atof(argv[3]);
-	Real dw = atof(argv[4]);
+	Real domega = atof(argv[2]);
+	Real domega_end = atof(argv[3]);
+	Real ddw = atof(argv[4]);
 	Real D = atof(argv[5]);
 
 	Real eq_t = atof(argv[6]);
 	Real sim_t = atof(argv[7]);
 
 	K = 1;
-	w1 = omega;
-	w2 = 0;
+	w1 = -domega/2;
+	w2 = domega/2;
 	D1 = D2 = D;
 
 	r1 = r2 = 0.9;
@@ -151,25 +154,26 @@ void Omega_Chnage(int argc, char* argv[])
 	Real dt = 0.001;
 	Eq(eq_t, dt, 0.1);
 
-	if (omega_end > omega)
-		while (omega <= omega_end)
+	if (domega_end > domega)
+		while (domega <= domega_end)
 		{
-			w1 = omega;
-			w2 = 0;
+			dw = domega;
+			w1 = -domega/2;
+			w2 = domega/2;
 
 			Set_Output();
 			Eq(sim_t, dt, 0.1);
-			omega += dw;
+			domega += ddw;
 		}
 	else
-		while (omega >= omega_end)
+		while (domega >= domega_end)
 		{
-			w1 = omega;
-			w2 = 0;
+			w1 = -domega/2;
+			w2 = domega/2;
 
 			Set_Output();
 			Eq(sim_t, dt, 0.1);
-			omega -= dw;
+			domega -= ddw;
 		}
 }
 
@@ -250,8 +254,8 @@ int main(int argc, char* argv[])
 {
 	srand(time(NULL));
 
-//	Single_Run(argc, argv);
-	Omega_Chnage(argc,argv);
+	Single_Run(argc, argv);
+//	Omega_Chnage(argc,argv);
 //	Real t = Spike_Interval(argc, argv);
 
 //	Trace_k(100000,100000, dt);
