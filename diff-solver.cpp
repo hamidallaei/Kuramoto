@@ -4,24 +4,39 @@
 #include <sstream>
 #include <cstdlib>
 #include <cmath>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
 
 #include "phase.h"
 
 using namespace std;
 
-Real alpha = 0.75;
+Real alpha = 1.5;
 
-Real K;
+Real K = 1;
+Real kappa = 0.5;
 Real D1 = 0.01;
 Real D2 = 0.01;
+Real D = 0.01;
 Real dw = 0.2;
 Real w1 = -dw/2;
 Real w2 = dw/2;
-Real dt = 0.001;
+Real dt = 1.0/1024;
 Real r1,r2, r1_new, r2_new;
 Real psi1,psi2, psi1_new, psi2_new;
 
 ofstream output ;
+
+static gsl_rng* gsl_r;
+
+static void Init_Rand (long int seed = 0)
+{
+	gsl_rng_env_setup();
+	const gsl_rng_type * T;
+	T = gsl_rng_default;
+	gsl_r = gsl_rng_alloc (T);
+	gsl_rng_set(gsl_r, seed);
+}
 
 void Transform()
 {
@@ -31,34 +46,34 @@ void Transform()
 	psi2 -= n2*2*M_PI;
 }
 
-Real Find_Integrand(const Real& w, const Real& fraction, const Real& r, const Real& psi, const Real& psi_other)
-{
-	return (w + 0.5*(1-alpha)*K*(r*r*r + 1/r)*r2*sin(psi2 - psi1));
-}
-
 void One_Step(Real dt)
 {
-	Real psi1_integrand = (w1 + 0.5*alpha*K*(r1*r1*r1 + 1/r1)*r2*sin(psi2 - psi1));
-	Real psi2_integrand = (w2 + 0.5*(1-alpha)*K*(r2*r2*r2 + 1/r2)*r1*sin(psi1 - psi2));
-	Real c = cos(psi2-psi1);
-	Real r1_integrand = 0.5*K*(1-r1*r1*r1*r1)*((1-alpha)*r1 + alpha*r2*c) - D1*r1;
-	Real r2_integrand = 0.5*K*(1-r2*r2*r2*r2)*(alpha*r2 + (1-alpha)*r1*c) - D2*r2;
+	Real noise_amplitude = D*sqrt(2*dt) / 1024;
+	Real dr1 = gsl_ran_gaussian(gsl_r, noise_amplitude);
+	Real dr2 = gsl_ran_gaussian(gsl_r, noise_amplitude);
+	Real dpsi1 = gsl_ran_gaussian(gsl_r, noise_amplitude);
+	Real dpsi2 = gsl_ran_gaussian(gsl_r, noise_amplitude);
 
-	psi1_new = psi1 + psi1_integrand*dt;
-	psi2_new = psi2 + psi2_integrand*dt;
-	r1_new = r1 + r1_integrand*dt;
-	r2_new = r2 + r2_integrand*dt;
+	Real psi1_integrand = w1 + 0.5*K*(r1*r1*r1*r1 + 1)*(r1*sin(alpha) + kappa*r2*sin(psi2 - psi1 + alpha));
+	Real psi2_integrand = w2 + 0.5*K*(r2*r2*r2*r2 + 1)*(r2*sin(alpha) + kappa*r1*sin(psi1 - psi2 + alpha));
+	Real r1_integrand = 0.5*K*(1-r1*r1*r1*r1)*(r1*cos(alpha) + kappa*r2*cos(psi2 - psi1 + alpha)) - D1*r1;
+	Real r2_integrand = 0.5*K*(1-r2*r2*r2*r2)*(r2*cos(alpha) + kappa*r1*cos(psi2 - psi1 - alpha)) - D2*r2;
 
-	Real psi1_new_integrand = (w1 + 0.5*alpha*K*(r1_new*r1_new*r1_new + 1/r1_new)*r2_new*sin(psi2_new - psi1_new));
-	Real psi2_new_integrand = (w2 + 0.5*(1-alpha)*K*(r2_new*r2_new*r2_new + 1/r2_new)*r1*sin(psi1_new - psi2_new));
-	Real c_new = cos(psi2-psi1);
-	Real r1_new_integrand = 0.5*K*(1-r1_new*r1_new*r1_new*r1_new)*((1-alpha)*r1_new + alpha*r2_new*c_new) - D1*r1_new;
-	Real r2_new_integrand = 0.5*K*(1-r2_new*r2_new*r2_new*r2_new)*(alpha*r2_new + (1-alpha)*r1_new*c_new) - D2*r2_new;
+	psi1_new = psi1 + 0.5*(psi1_integrand*dt + dpsi1);
+	psi2_new = psi2 + 0.5*(psi2_integrand*dt + dpsi2);
+	r1_new = r1 + 0.5*(r1_integrand*dt + dr1);
+	r2_new = r2 + 0.5*(r2_integrand*dt + dr2);
 
-	psi1 += 0.5*(psi1_integrand + psi1_new_integrand)*dt;
-	psi2 += 0.5*(psi2_integrand + psi2_new_integrand)*dt;
-	r1 += 0.5*(r1_integrand + r1_new_integrand)*dt;
-	r2 += 0.5*(r2_integrand + r2_new_integrand)*dt;
+	Real psi1_new_integrand = w1 + 0.5*K*(r1_new*r1_new*r1_new*r1_new + 1)*(r1_new*sin(alpha) + kappa*r2_new*sin(psi2_new - psi1_new + alpha));
+	Real psi2_new_integrand = w2 + 0.5*K*(r2_new*r2_new*r2_new*r2_new + 1)*(r2_new*sin(alpha) + kappa*r1_new*sin(psi1_new - psi2_new + alpha));
+
+	Real r1_new_integrand = 0.5*K*(1-r1_new*r1_new*r1_new*r1_new)*(r1_new*cos(alpha) + kappa*r2_new*cos(psi2_new - psi1_new + alpha)) - D1*r1_new;
+	Real r2_new_integrand = 0.5*K*(1-r2_new*r2_new*r2_new*r2_new)*(r2_new*cos(alpha) + kappa*r1_new*cos(psi2_new - psi1_new - alpha)) - D2*r2_new;
+
+	psi1 += psi1_new_integrand*dt + dpsi1;
+	psi2 += psi2_new_integrand*dt + dpsi2;
+	r1 += r1_new_integrand*dt + dr1;
+	r2 +=r2_new_integrand*dt + dr2;
 
 	Transform();
 }
@@ -106,7 +121,7 @@ void Set_Output()
 	output.close();
 	stringstream address;
 	address.str("");
-	address << "alpha_" << alpha << "_dw_" << std::setprecision(10) << dw << "_D1_" << D1 << "_D2_" << D2 << ".dat";
+	address << "kappa_" << kappa << "_alpha_" << alpha << "_D_" << std::setprecision(10) << D << ".dat";
 	output.open(address.str().c_str());
 	cout << address.str() << endl;
 }
@@ -139,7 +154,7 @@ void Omega_Chnage(int argc, char* argv[])
 	Real domega = atof(argv[2]);
 	Real domega_end = atof(argv[3]);
 	Real ddw = atof(argv[4]);
-	Real D = atof(argv[5]);
+	D = atof(argv[5]);
 
 	Real eq_t = atof(argv[6]);
 	Real sim_t = atof(argv[7]);
@@ -174,6 +189,50 @@ void Omega_Chnage(int argc, char* argv[])
 			Set_Output();
 			Eq(sim_t, dt, 0.1);
 			domega -= ddw;
+		}
+}
+
+void Noise_Chnage(int argc, char* argv[])
+{
+	kappa = atof(argv[1]);
+	alpha  = atof(argv[2]);
+	Real dD = atof(argv[3]);
+	Real D_end = atof(argv[4]);
+
+	Real eq_t = atof(argv[5]);
+	Real sim_t = atof(argv[6]);
+
+	K = 1;
+	
+	w1 = 0;
+	w2 = 0;
+
+
+
+	r1 = r2 = 0.9;
+
+	Real dt = 1.0 / 1024;
+	Eq(eq_t, dt, 0.1);
+
+	D = 0;
+
+	if (D_end > dD)
+		while (D <= D_end)
+		{
+			D1 = D2 = D;
+
+			Set_Output();
+			Eq(sim_t, dt, 0.1);
+			D += dD;
+		}
+	else
+		while (D >= D_end)
+		{
+			D1 = D2 = D;
+
+			Set_Output();
+			Eq(sim_t, dt, 0.1);
+			D -= dD;
 		}
 }
 
@@ -254,8 +313,11 @@ int main(int argc, char* argv[])
 {
 	srand(time(NULL));
 
-	Single_Run(argc, argv);
+	Init_Rand(time(NULL));
+
+//	Single_Run(argc, argv);
 //	Omega_Chnage(argc,argv);
+	Noise_Chnage(argc,argv);
 //	Real t = Spike_Interval(argc, argv);
 
 //	Trace_k(100000,100000, dt);

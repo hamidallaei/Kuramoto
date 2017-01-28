@@ -8,7 +8,8 @@ struct Cluster{
 	Oscillator* os;
 	Real r; //order parameter
 	Real psi;
-	Real alpha;
+	Real kappa;
+	Phase alpha;
 
 	Cluster(int input_N, Real omega, Real D);
 	Cluster(int input_N);
@@ -17,14 +18,16 @@ struct Cluster{
 
 	void Set_Omega(const Real &);
 	void Set_D(const Real &);
+	void Set_kappa(const Real &);
+	void Set_alpha(const Real &);
 
 	void Reset();
 	void Self_Interact();
 	void Interact(Cluster& c);
 	void All_Interactions(Cluster& c);
 
-	void Add_Noise(const Real& dt);
-	void Noiseless_Euler_Move(const Real&);
+	void Runge_Kutta2_Move_1();
+	void Runge_Kutta2_Move_2();
 
 	void Find_Order_Parameter();
 
@@ -61,13 +64,23 @@ Cluster::~Cluster()
 void Cluster::Set_Omega(const Real& omega)
 {
 	for (int i = 0; i < N; i++)
-		os[i].omega = omega;
+		os[i].Set_omega(omega);
 }
 
 void Cluster::Set_D(const Real& D)
 {
 	for (int i = 0; i < N; i++)
-		os[i].D = D;
+		os[i].Set_D(D);
+}
+
+void Cluster::Set_kappa(const Real& input_kappa)
+{
+	kappa = input_kappa;
+}
+
+void Cluster::Set_alpha(const Real& input_alpha)
+{
+	alpha = input_alpha;
 }
 
 void Cluster::Reset()
@@ -79,18 +92,14 @@ void Cluster::Reset()
 
 void Cluster::Self_Interact()
 {
-	Find_Order_Parameter();
 	for (int i = 0; i < N; i++)
-	{
-		os[i].Interact(alpha*r,psi);
-		os[i].Add_Drift();
-	}
+		os[i].Interact(r, psi, alpha);
 }
 
 void Cluster::Interact(Cluster& c)
 {
 	for (int i = 0; i < N; i++)
-		os[i].Interact(c.alpha*c.r,c.psi);
+		os[i].Interact(kappa*c.r, c.psi, alpha);
 }
 
 void Cluster::All_Interactions(Cluster& c)
@@ -98,25 +107,21 @@ void Cluster::All_Interactions(Cluster& c)
 	#pragma omp parallel for default(shared)
 	for (int i = 0; i < N; i++)
 	{
-		os[i].Interact(alpha*r,psi);
-		os[i].Interact(c.alpha*c.r,c.psi);
-		os[i].Add_Drift();
+		os[i].Interact(r,psi,alpha);
+		os[i].Interact(kappa*c.r, c.psi, alpha);
 	}
 }
 
-
-void Cluster::Add_Noise(const Real& dt)
+void Cluster::Runge_Kutta2_Move_1()
 {
-	#pragma omp parallel for default(shared)
 	for (int i = 0; i < N; i++)
-		os[i].Add_Noise(dt);
+		os[i].Runge_Kutta2_Move_1();
 }
 
-void Cluster::Noiseless_Euler_Move(const Real& dt)
+void Cluster::Runge_Kutta2_Move_2()
 {
-	#pragma omp parallel for default(shared)
 	for (int i = 0; i < N; i++)
-		os[i].Noiseless_Euler_Move(dt);
+		os[i].Runge_Kutta2_Move_2();
 }
 
 void Cluster::Find_Order_Parameter()

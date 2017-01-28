@@ -58,9 +58,23 @@ struct Phase{
 		return result;
 	}
 
+	const Phase operator* (const Real& p1) const
+	{
+		Phase result(p1);
+		result.value *= p1;
+		result.Transform();
+		return result;
+	}
+
 	void operator+= (const Real& p1)
 	{
 		value += p1;
+		Transform();
+	}
+
+	void operator+= (const Phase& p1)
+	{
+		value += p1.value;
 		Transform();
 	}
 
