@@ -31,6 +31,9 @@ struct Cluster{
 
 	void Find_Order_Parameter();
 
+	void Make_Random();
+	void Make_Ordered(const Real input_phase);
+
 	void Copy_Interaction(Cluster& c);
 
 	void Write_Interactions(ostream& out);
@@ -138,6 +141,24 @@ void Cluster::Find_Order_Parameter()
 	S /= N;
 	r = sqrt(C*C + S*S);
 	psi = atan2(S,C);
+}
+
+void Cluster::Make_Random()
+{
+	for (int i = 0; i < N; i++)
+	{
+		os[i].phi = gsl_ran_flat(Phase::gsl_r, 0, 2*M_PI);
+		os[i].phi.Transform();
+	}
+}
+
+void Cluster::Make_Ordered(const Real input_phase)
+{
+	for (int i = 0; i < N; i++)
+	{
+		os[i].phi = input_phase;
+		os[i].phi.Transform();
+	}
 }
 
 void Cluster::Write_Interactions(ostream& out)
