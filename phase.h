@@ -31,7 +31,7 @@ struct Phase{
 
 	Phase Transform()
 	{
-		int n = floor(value / (2*M_PI));
+		int n = floor(0.5 + value / (2*M_PI));
 		value -= 2*n*M_PI;
 	}
 

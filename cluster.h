@@ -40,6 +40,7 @@ struct Cluster{
 
 	const Cluster& operator= (const Cluster& c);
 	const Cluster& operator+= (const Cluster& c);
+	friend std::ostream& operator<<(std::ostream& out_s, const Cluster& box); // Save
 };
 
 Cluster::Cluster(int input_N, Real omega = 0, Real D = 0)
@@ -181,6 +182,12 @@ const Cluster& Cluster::operator+= (const Cluster& c)
 	for (int i = 0; i < N; i++)
 		os[i].int_sum += c.os[i].int_sum;
 	return (*this);
+}
+
+std::ostream& operator<<(std::ostream& out_s, const Cluster& c)
+{
+	for (int i = 0; i < c.N; i++)
+		out_s << c.os[i].phi - psi << endl;
 }
 
 #endif

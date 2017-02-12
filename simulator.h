@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <fstream>
+#include <iomanip>
 #include "cluster.h"
 
 struct Simulator{
@@ -140,7 +141,7 @@ void Simulator::Write()
 {
 	c1.Find_Order_Parameter();
 	c2.Find_Order_Parameter();
-	output << t << "\t" << c1.r << "\t" << c2.r << "\t" << c1.psi << "\t" << c2.psi << endl;
+	output << std::setprecision(3) << t << "\t" << c1.r << "\t" << c2.r << "\t" << c1.psi << "\t" << c2.psi << endl;
 }
 
 #endif

@@ -15,6 +15,11 @@ void Single_Run(int argc, char* argv[])
 	sim.Set_Output();
 
 	sim.Run(sim_t, 2*Oscillator::dt); // simulation time, time steps, saving interval (zero means no save)
+
+	ofstream snap_file1("snap-shot-1.dat");
+	ofstream snap_file2("snap-shot-2.dat");
+	snap_file1 << sim.c1;
+	snap_file2 << sim.c2;
 }
 
 void Change_Noise(int argc, char* argv[])
@@ -30,24 +35,24 @@ void Change_Noise(int argc, char* argv[])
 
 	Real D_max = 0.5*(1 + sim.c1.kappa)*cos(alpha);
 	Real D = 0;
-	Real dD = 0.05;
-	for (D = 0.0; D < (D_max + 0.6); D += dD)
+	Real dD = 0.001;
+	for (D = 0.0; D < (D_max + 0.3); D += dD)
 	{
-		if (D >= D_max + 0.3)
-			dD = 0.1;
+		if (D >= D_max + 0.02)
+			dD = 0.01;
 		sim.t = 0;
 		sim.c1.Make_Random();
 		sim.c2.Make_Random();
 		sim.Set_D(D);
 		sim.Set_Output();
-		sim.Run(sim_t, 4*Oscillator::dt); // simulation time, time steps, saving interval (zero means no save)
+		sim.Run(sim_t, 8*Oscillator::dt); // simulation time, time steps, saving interval (zero means no save)
 	}
 }
 
 int main(int argc, char* argv[])
 {
 //	Omega_Chnage(argc, argv);
-//	Single_Run(argc, argv);
-	Change_Noise(argc, argv);
+	Single_Run(argc, argv);
+//	Change_Noise(argc, argv);
 }
 
